@@ -1,0 +1,6 @@
+{
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar",
+        "/media/bento/Files/UFOP/BCC 362 - Sistemas Distribuídos/TP2/New/json-simple-1.1.1.jar"
+    ]
+}

@@ -1,0 +1,11 @@
+{
+    "name": "Client C",
+    "ip": "localhost",
+    "port": 8088,
+
+    "brokers": [{
+        "name": "Broker 1",
+        "ip": "localhost",
+        "port": 8080
+    }]
+}
