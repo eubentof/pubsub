@@ -32,8 +32,8 @@ public class ApplClient {
   }
 
   public ApplClient() throws Exception {
-    String fileNameConfig = "clientA.config.json";
-    // String fileNameConfig = "clientB.config.json";
+    // String fileNameConfig = "clientA.config.json";
+    String fileNameConfig = "clientB.config.json";
     File file = new File("src/appl/" + fileNameConfig);
 
     JSONObject jsonObject = loadJSON(file.getAbsolutePath());
@@ -116,6 +116,7 @@ public class ApplClient {
           numberOfTries++;
         }
         // Espera 2 segundos antes de verificar novamente se tem acesso
+        System.out.println(this.name + " awating");
         TimeUnit.SECONDS.sleep(2);
         iterationLimit--;
       }
@@ -137,7 +138,7 @@ public class ApplClient {
     Iterator<Message> it = log.iterator();
     while (it.hasNext()) {
       Message aux = it.next();
-      System.out.print("- " + aux.getContent() + " | id" + aux.getLogId() + "\n");
+      System.out.print("- " + aux.getContent() + " | t" + aux.getLogId() + "\n");
     }
     System.out.println();
   }

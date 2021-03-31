@@ -33,7 +33,7 @@ public class Broker {
 			resp = reader.next();
 
 			if (resp.equals("stop")) {
-				System.out.println("Broker stopped...");
+				System.out.println("Broker stopped.");
 				s.stop();
 				brokerThread.interrupt();
 				System.out.println("==================================");
@@ -42,7 +42,7 @@ public class Broker {
 				Iterator<Message> it = log.iterator();
 				while (it.hasNext()) {
 					Message aux = it.next();
-					System.out.print("- " + aux.getContent() + aux.getLogId() + "\n");
+					System.out.print("- " + aux.getContent() + " | t:" + aux.getLogId() + "\n");
 				}
 				System.out.println();
 			}
