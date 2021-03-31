@@ -71,48 +71,58 @@ public class ApplClient {
     Boolean hasAccess = false;
 
     Integer numberOfTries = 0;
+    Integer iterationLimit = 10;
 
     Thread request = new ThreadWrapper(this.client, "Aquire - var X | " + this.name, brokerAddress,
         brokerPort.intValue());
+    request.start();
+    request.join();
+    request.interrupt();
     isRequesting = true;
+    try {
+      while (iterationLimit > 0 && numberOfTries <= numberOfRequests) {
 
-    while (numberOfTries <= numberOfRequests) {
+        if (!isRequesting) {
+          // Solicitar o acesso
+          request = new ThreadWrapper(this.client, "Aquire - var X | " + this.name, brokerAddress,
+              brokerPort.intValue());
+          request.start();
+          request.join();
+          request.interrupt();
+          isRequesting = true;
+        }
 
-      if (!isRequesting) {
-        // Solicitar o acesso
-        request = new ThreadWrapper(this.client, "Aquire - var X | " + this.name, brokerAddress, brokerPort.intValue());
-        request.start();
-        request.join();
-        request.interrupt();
-        isRequesting = true;
+        hasAccess = checkIfHasAccess();
+
+        if (hasAccess) {
+          Random rand = new Random();
+          Integer secs = rand.nextInt(maxSleepTime.intValue());
+
+          request = new ThreadWrapper(this.client, "Using - var X | " + this.name, brokerAddress,
+              brokerPort.intValue());
+          request.start();
+          request.join();
+          request.interrupt();
+
+          TimeUnit.SECONDS.sleep(secs); // Simulando a utilização do recurso
+
+          request = new ThreadWrapper(this.client, "Release - var X | " + this.name, brokerAddress,
+              brokerPort.intValue());
+          request.start();
+          request.join();
+          request.interrupt();
+
+          isRequesting = false;
+          numberOfTries++;
+        }
+        // Espera 2 segundos antes de verificar novamente se tem acesso
+        TimeUnit.SECONDS.sleep(2);
+        iterationLimit--;
       }
 
-      hasAccess = checkIfHasAccess();
-
-      if (hasAccess) {
-        Random rand = new Random();
-        Integer secs = rand.nextInt(maxSleepTime.intValue());
-
-        request = new ThreadWrapper(this.client, "Using - var X | " + this.name, brokerAddress, brokerPort.intValue());
-        request.start();
-        request.join();
-        request.interrupt();
-
-        TimeUnit.SECONDS.sleep(secs); // Simulando a utilização do recurso
-
-        request = new ThreadWrapper(this.client, "Release - var X | " + this.name, brokerAddress,
-            brokerPort.intValue());
-        request.start();
-        request.join();
-        request.interrupt();
-
-        isRequesting = false;
-        numberOfTries++;
-      }
-      // Espera 2 segundos antes de verificar novamente se tem acesso
-      TimeUnit.SECONDS.sleep(2);
+    } catch (Exception e) {
+      e.printStackTrace();
     }
-
     System.out.println("Stoping " + this.name);
 
     // TODO: Colocar aqui com o broker salvo
@@ -173,7 +183,7 @@ public class ApplClient {
       String content = message.getContent();
 
       // Verifica todos os requests
-      if (content.startsWith("Request")) {
+      if (content.startsWith("Aquire")) {
         openRequests.add(content);
       }
 
@@ -189,10 +199,11 @@ public class ApplClient {
         }
       }
 
-      String currentRequest = openRequests.get(0);
-
-      if (currentRequest.endsWith(this.name)) {
-        return true;
+      if (openRequests.size() > 0) {
+        String currentRequest = openRequests.get(0);
+        if (currentRequest.endsWith(this.name)) {
+          return true;
+        }
       }
     }
     return false;
