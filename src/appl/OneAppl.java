@@ -95,7 +95,7 @@ public class OneAppl {
 		}
 
 		public void run() {
-			c.publish(msg, host, port);
+			// c.publish(msg, host, port);
 		}
 	}
 

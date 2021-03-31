@@ -1,7 +1,12 @@
 package appl;
 
 import core.Server;
+
+import java.util.Iterator;
+import java.util.List;
 import java.util.Scanner;
+
+import core.Message;
 
 public class Broker {
 
@@ -24,16 +29,25 @@ public class Broker {
 
 		do {
 
-			System.out.print("\nShutdown the broker (Y|N)?: ");
+			System.out.print("\nType 'stop' and press [enter] to stop broker.\n");
 			resp = reader.next();
 
-			if (resp.equals("Y") || resp.equals("y")) {
+			if (resp.equals("stop")) {
 				System.out.println("Broker stopped...");
 				s.stop();
 				brokerThread.interrupt();
+				System.out.println("==================================");
+				System.out.println("Printing log:");
+				List<Message> log = s.getLogMessages();
+				Iterator<Message> it = log.iterator();
+				while (it.hasNext()) {
+					Message aux = it.next();
+					System.out.print("- " + aux.getContent() + aux.getLogId() + "\n");
+				}
+				System.out.println();
 			}
 
-		} while (!(resp.equals("Y") || resp.equals("y")));
+		} while (!resp.equals("stop"));
 
 		// once finished
 		reader.close();

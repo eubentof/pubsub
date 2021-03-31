@@ -10,47 +10,47 @@ import core.Server;
 import core.client.Client;
 
 public class PubSubClient {
-	
+
 	private Server observer;
 	private ThreadWrapper clientThread;
-	
+
 	private String clientAddress;
 	private int clientPort;
-	
-	public PubSubClient(){
-		//this constructor must be called only when the method
-		//startConsole is used
-		//otherwise the other constructor must be called
+
+	public PubSubClient() {
+		// this constructor must be called only when the method
+		// startConsole is used
+		// otherwise the other constructor must be called
 	}
-	
-	public PubSubClient(String clientAddress, int clientPort){
+
+	public PubSubClient(String clientAddress, int clientPort) {
 		this.clientAddress = clientAddress;
 		this.clientPort = clientPort;
 		observer = new Server(clientPort);
 		clientThread = new ThreadWrapper(observer);
 		clientThread.start();
 	}
-	
-	public void subscribe(String brokerAddress, int brokerPort){
-					
+
+	public void subscribe(String brokerAddress, int brokerPort) {
+
 		Message msgBroker = new MessageImpl();
 		msgBroker.setBrokerId(brokerPort);
 		msgBroker.setType("sub");
-		msgBroker.setContent(clientAddress+":"+clientPort);
+		msgBroker.setContent(clientAddress + ":" + clientPort);
 		Client subscriber = new Client(brokerAddress, brokerPort);
 		System.out.println(subscriber.sendReceive(msgBroker).getContent());
 	}
-	
-	public void unsubscribe(String brokerAddress, int brokerPort){
-		
+
+	public void unsubscribe(String brokerAddress, int brokerPort) {
+
 		Message msgBroker = new MessageImpl();
 		msgBroker.setBrokerId(brokerPort);
 		msgBroker.setType("unsub");
-		msgBroker.setContent(clientAddress+":"+clientPort);
+		msgBroker.setContent(clientAddress + ":" + clientPort);
 		Client subscriber = new Client(brokerAddress, brokerPort);
 		subscriber.sendReceive(msgBroker);
 	}
-	
+
 	public void publish(String message, String brokerAddress, int brokerPort){
 		Message msgPub = new MessageImpl();
 		msgPub.setBrokerId(brokerPort);
@@ -59,21 +59,20 @@ public class PubSubClient {
 		
 		Client publisher = new Client(brokerAddress, brokerPort);
 		publisher.sendReceive(msgPub);
-		
 	}
-	
-	public List<Message> getLogMessages(){
+
+	public List<Message> getLogMessages() {
 		return observer.getLogMessages();
 	}
 
-	public void stopPubSubClient(){
+	public void stopPubSubClient() {
 		System.out.println("Client stopped...");
 		observer.stop();
 		clientThread.interrupt();
 	}
-		
-	public void startConsole(){
-		Scanner reader = new Scanner(System.in);  // Reading from System.in
+
+	public void startConsole() {
+		Scanner reader = new Scanner(System.in); // Reading from System.in
 		System.out.print("Enter the client address (ex. localhost): ");
 		String clientAddress = reader.next();
 		System.out.print("Enter the client port (ex.8080): ");
@@ -83,27 +82,27 @@ public class PubSubClient {
 		String brokerAddress = reader.next();
 		System.out.print("Enter the broker port (ex.8080): ");
 		int brokerPort = reader.nextInt();
-		
+
 		observer = new Server(clientPort);
 		clientThread = new ThreadWrapper(observer);
 		clientThread.start();
-		
+
 		Message msgBroker = new MessageImpl();
 		msgBroker.setType("sub");
 		msgBroker.setBrokerId(brokerPort);
-		msgBroker.setContent(clientAddress+":"+clientPort);
+		msgBroker.setContent(clientAddress + ":" + clientPort);
 		Client subscriber = new Client(brokerAddress, brokerPort);
 		subscriber.sendReceive(msgBroker);
-		
+
 		System.out.println("Do you want to subscribe for more brokers? (Y|N)");
 		String resp = reader.next();
-		
-		if(resp.equals("Y")||resp.equals("y")){
+
+		if (resp.equals("Y") || resp.equals("y")) {
 			String message = "";
 			Message msgSub = new MessageImpl();
 			msgSub.setType("sub");
-			msgSub.setContent(clientAddress+":"+clientPort);
-			while(!message.equals("exit")){
+			msgSub.setContent(clientAddress + ":" + clientPort);
+			while (!message.equals("exit")) {
 				System.out.println("You must inform the broker credentials...");
 				System.out.print("Enter the broker address (ex. localhost): ");
 				brokerAddress = reader.next();
@@ -116,33 +115,33 @@ public class PubSubClient {
 				message = reader.next();
 			}
 		}
-		
+
 		System.out.println("Do you want to publish messages? (Y|N)");
 		resp = reader.next();
-		if(resp.equals("Y")||resp.equals("y")){
-			String message = "";			
+		if (resp.equals("Y") || resp.equals("y")) {
+			String message = "";
 			Message msgPub = new MessageImpl();
 			msgPub.setType("pub");
-			while(!message.equals("exit")){
+			while (!message.equals("exit")) {
 				System.out.println("Enter a message (exit to finish submissions): ");
 				message = reader.next();
 				msgPub.setContent(message);
-				
+
 				System.out.println("You must inform the broker credentials...");
 				System.out.print("Enter the broker address (ex. localhost): ");
 				brokerAddress = reader.next();
 				System.out.print("Enter the broker port (ex.8080): ");
 				brokerPort = reader.nextInt();
-				
+
 				msgPub.setBrokerId(brokerPort);
 				Client publisher = new Client(brokerAddress, brokerPort);
 				publisher.sendReceive(msgPub);
-				
+
 				List<Message> log = observer.getLogMessages();
-				
+
 				Iterator<Message> it = log.iterator();
 				System.out.print("Log itens: ");
-				while(it.hasNext()){
+				while (it.hasNext()) {
 					Message aux = it.next();
 					System.out.print(aux.getContent() + aux.getLogId() + " | ");
 				}
@@ -150,28 +149,30 @@ public class PubSubClient {
 
 			}
 		}
-		
+
 		System.out.print("Shutdown the client (Y|N)?: ");
-		resp = reader.next(); 
-		if (resp.equals("Y") || resp.equals("y")){
+		resp = reader.next();
+		if (resp.equals("Y") || resp.equals("y")) {
 			System.out.println("Client stopped...");
 			observer.stop();
 			clientThread.interrupt();
-			
+
 		}
-		
-		//once finished
+
+		// once finished
 		reader.close();
 	}
-	
-	class ThreadWrapper extends Thread{
+
+	class ThreadWrapper extends Thread {
 		Server s;
-		public ThreadWrapper(Server s){
+
+		public ThreadWrapper(Server s) {
 			this.s = s;
 		}
-		public void run(){
+
+		public void run() {
 			s.begin();
 		}
-	}	
+	}
 
 }

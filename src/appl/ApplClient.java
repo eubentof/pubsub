@@ -2,16 +2,20 @@ package appl;
 
 import java.io.File;
 import java.io.FileReader;
+import java.lang.reflect.Array;
 import java.util.concurrent.TimeUnit;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 import core.Message;
+
+import java.util.Random;
 
 public class ApplClient {
 
@@ -28,8 +32,9 @@ public class ApplClient {
   }
 
   public ApplClient() throws Exception {
-    String filePath = "clientA.config.json";
-    File file = new File("src/appl/" + filePath);
+    String fileNameConfig = "clientA.config.json";
+    // String fileNameConfig = "clientB.config.json";
+    File file = new File("src/appl/" + fileNameConfig);
 
     JSONObject jsonObject = loadJSON(file.getAbsolutePath());
 
@@ -37,11 +42,14 @@ public class ApplClient {
     this.ip = (String) jsonObject.get("ip");
     this.port = (Long) jsonObject.get("port");
 
+    Long numberOfRequests = (Long) jsonObject.get("numberOfRequests");
+    Long maxSleepTime = (Long) jsonObject.get("maxSleepTime");
+
     this.brokers = (JSONArray) jsonObject.get("brokers");
 
-    System.out.println("Starting client " + name + " at " + ip + ":" + port);
+    System.out.println("Starting client " + this.name + " at " + this.ip + ":" + this.port);
 
-    this.client = new PubSubClient(ip, port.intValue());
+    this.client = new PubSubClient(this.ip, this.port.intValue());
 
     for (int i = 0; i < this.brokers.size(); i++) {
       JSONObject broker = (JSONObject) this.brokers.get(i);
@@ -54,41 +62,80 @@ public class ApplClient {
       this.client.subscribe(brokerAddress, brokerPort.intValue());
     }
 
-    for (int i = 0; i < 5; i++) {
-      JSONObject broker = (JSONObject) this.brokers.get(0);
-      String brokerAddress = (String) broker.get("ip");
-      Long brokerPort = (Long) broker.get("port");
+    // TODO: TP2 - Colocar para pegar outros brokers
+    JSONObject broker = (JSONObject) this.brokers.get(0);
+    String brokerAddress = (String) broker.get("ip");
+    Long brokerPort = (Long) broker.get("port");
 
-      try {
-        Thread request = new ThreadWrapper(this.client, "Access " + this.name + " - var X", brokerAddress,
+    Boolean isRequesting = false;
+    Boolean hasAccess = false;
+
+    Integer numberOfTries = 0;
+
+    Thread request = new ThreadWrapper(this.client, "Aquire - var X | " + this.name, brokerAddress,
+        brokerPort.intValue());
+    isRequesting = true;
+
+    while (numberOfTries <= numberOfRequests) {
+
+      if (!isRequesting) {
+        // Solicitar o acesso
+        request = new ThreadWrapper(this.client, "Aquire - var X | " + this.name, brokerAddress, brokerPort.intValue());
+        request.start();
+        request.join();
+        request.interrupt();
+        isRequesting = true;
+      }
+
+      hasAccess = checkIfHasAccess();
+
+      if (hasAccess) {
+        Random rand = new Random();
+        Integer secs = rand.nextInt(maxSleepTime.intValue());
+
+        request = new ThreadWrapper(this.client, "Using - var X | " + this.name, brokerAddress, brokerPort.intValue());
+        request.start();
+        request.join();
+        request.interrupt();
+
+        TimeUnit.SECONDS.sleep(secs); // Simulando a utilização do recurso
+
+        request = new ThreadWrapper(this.client, "Release - var X | " + this.name, brokerAddress,
             brokerPort.intValue());
         request.start();
         request.join();
-        TimeUnit.SECONDS.sleep(5);
         request.interrupt();
-      } catch (Exception e) {
-        throw (e);
+
+        isRequesting = false;
+        numberOfTries++;
       }
+      // Espera 2 segundos antes de verificar novamente se tem acesso
+      TimeUnit.SECONDS.sleep(2);
     }
-    
-    System.out.println("Printing log:");
-    List<Message> log = this.client.getLogMessages();
-    Iterator<Message> it = log.iterator();
-    while (it.hasNext()) {
-      Message aux = it.next();
-      System.out.print("- " + aux.getContent() + aux.getLogId() + "\n");
-    }
-    System.out.println();
-    
-    System.out.println("Stoping " + this.name + "...");
+
+    System.out.println("Stoping " + this.name);
+
     // TODO: Colocar aqui com o broker salvo
     this.client.unsubscribe("localhost", 8080);
     this.client.stopPubSubClient();
   }
 
+  public void printLog() {
+    System.out.println("==================================");
+    System.out.println("Printing log:");
+    List<Message> log = this.client.getLogMessages();
+    Iterator<Message> it = log.iterator();
+    while (it.hasNext()) {
+      Message aux = it.next();
+      System.out.print("- " + aux.getContent() + " | id" + aux.getLogId() + "\n");
+    }
+    System.out.println();
+  }
+
   class ThreadWrapper extends Thread {
     PubSubClient c;
     String msg;
+    String type;
     String host;
     int port;
 
@@ -113,5 +160,41 @@ public class ApplClient {
     jsonObject = (JSONObject) parser.parse(new FileReader(file));
 
     return jsonObject;
+  }
+
+  public Boolean checkIfHasAccess() {
+    List<Message> log = this.client.getLogMessages();
+    Iterator<Message> it = log.iterator();
+
+    List<String> openRequests = new ArrayList<String>();
+
+    while (it.hasNext()) {
+      Message message = it.next();
+      String content = message.getContent();
+
+      // Verifica todos os requests
+      if (content.startsWith("Request")) {
+        openRequests.add(content);
+      }
+
+      // Verifica todos as releases
+      if (content.startsWith("Relase")) {
+        for (String request : openRequests) {
+          String clientName = request.split("|")[1].strip();
+
+          if (request.endsWith(clientName)) {
+            openRequests.remove(request);
+            break;
+          }
+        }
+      }
+
+      String currentRequest = openRequests.get(0);
+
+      if (currentRequest.endsWith(this.name)) {
+        return true;
+      }
+    }
+    return false;
   }
 }

@@ -1,8 +1,9 @@
 {
     "name": "Client A",
     "ip": "localhost",
-    "port": 8086,
-
+    "port": 8083,
+    "numberOfRequests": 10,
+    "maxSleepTime": 5,
     "brokers": [{
         "name": "Broker 1",
         "ip": "localhost",
