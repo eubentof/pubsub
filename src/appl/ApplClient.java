@@ -50,16 +50,26 @@ public class ApplClient {
     System.out.println("Starting client " + this.name + " at " + this.ip + ":" + this.port);
 
     this.client = new PubSubClient(this.ip, this.port.intValue());
+    try {
 
-    for (int i = 0; i < this.brokers.size(); i++) {
-      JSONObject broker = (JSONObject) this.brokers.get(i);
+      for (int i = 0; i < this.brokers.size(); i++) {
+        JSONObject broker = (JSONObject) this.brokers.get(i);
 
-      String brokerAddress = (String) broker.get("ip");
-      Long brokerPort = (Long) broker.get("port");
+        String brokerAddress = (String) broker.get("ip");
+        Long brokerPort = (Long) broker.get("port");
 
-      System.out.println("Subscribing to " + broker.get("name") + " at " + brokerAddress + ":" + brokerPort);
+        System.out.println("Subscribing to " + broker.get("name") + " at " + brokerAddress + ":" + brokerPort);
 
-      this.client.subscribe(brokerAddress, brokerPort.intValue());
+        this.client.subscribe(brokerAddress, brokerPort.intValue());
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      System.out.println("Stoping " + this.name);
+
+      // TODO: Colocar aqui com o broker salvo
+      this.client.unsubscribe("localhost", 8080);
+      this.client.stopPubSubClient();
     }
 
     // TODO: TP2 - Colocar para pegar outros brokers
@@ -71,20 +81,21 @@ public class ApplClient {
     Boolean hasAccess = false;
 
     Integer numberOfTries = 0;
-    Integer iterationLimit = 10;
+    Integer iterationLimit = 100;
 
-    Thread request = new ThreadWrapper(this.client, "Aquire - var X | " + this.name, brokerAddress,
+    Thread request = new ThreadWrapper(this.client, "Aquire  : var X - " + this.name, brokerAddress,
         brokerPort.intValue());
     request.start();
     request.join();
     request.interrupt();
     isRequesting = true;
+
     try {
       while (iterationLimit > 0 && numberOfTries <= numberOfRequests) {
 
         if (!isRequesting) {
           // Solicitar o acesso
-          request = new ThreadWrapper(this.client, "Aquire - var X | " + this.name, brokerAddress,
+          request = new ThreadWrapper(this.client, "Aquire  : var X - " + this.name, brokerAddress,
               brokerPort.intValue());
           request.start();
           request.join();
@@ -98,15 +109,14 @@ public class ApplClient {
           Random rand = new Random();
           Integer secs = rand.nextInt(maxSleepTime.intValue());
 
-          request = new ThreadWrapper(this.client, "Using - var X | " + this.name, brokerAddress,
-              brokerPort.intValue());
+          request = new ThreadWrapper(this.client, "Using   : var X - " + this.name, brokerAddress, brokerPort.intValue());
           request.start();
           request.join();
           request.interrupt();
 
           TimeUnit.SECONDS.sleep(secs); // Simulando a utilização do recurso
 
-          request = new ThreadWrapper(this.client, "Release - var X | " + this.name, brokerAddress,
+          request = new ThreadWrapper(this.client, "Release : var X - " + this.name, brokerAddress,
               brokerPort.intValue());
           request.start();
           request.join();
@@ -116,7 +126,7 @@ public class ApplClient {
           numberOfTries++;
         }
         // Espera 2 segundos antes de verificar novamente se tem acesso
-        System.out.println(this.name + " awating");
+        System.out.println(this.name + " is waiting");
         TimeUnit.SECONDS.sleep(2);
         iterationLimit--;
       }
@@ -125,6 +135,8 @@ public class ApplClient {
       e.printStackTrace();
     }
     System.out.println("Stoping " + this.name);
+
+    printLog();
 
     // TODO: Colocar aqui com o broker salvo
     this.client.unsubscribe("localhost", 8080);
@@ -181,32 +193,32 @@ public class ApplClient {
 
     while (it.hasNext()) {
       Message message = it.next();
-      String content = message.getContent();
+      String request = message.getContent();
 
       // Verifica todos os requests
-      if (content.startsWith("Aquire")) {
-        openRequests.add(content);
+      if (request.startsWith("Aquire")) {
+        openRequests.add(request + "");
       }
 
-      // Verifica todos as releases
-      if (content.startsWith("Relase")) {
-        for (String request : openRequests) {
-          String clientName = request.split("|")[1].strip();
+      // Verifica se o release é do primeiro aquire
+      if (request.startsWith("Release")) {
+        String[] splitedRequest = request.split("-");
+        String clientName = splitedRequest[splitedRequest.length - 1].trim();
 
-          if (request.endsWith(clientName)) {
-            openRequests.remove(request);
-            break;
-          }
-        }
-      }
-
-      if (openRequests.size() > 0) {
-        String currentRequest = openRequests.get(0);
-        if (currentRequest.endsWith(this.name)) {
-          return true;
+        String firstRequest = openRequests.get(0);
+        if (firstRequest.endsWith(clientName)) {
+          openRequests.remove(firstRequest);
         }
       }
     }
+
+    if (openRequests.size() > 0) {
+      String currentRequest = openRequests.get(0);
+      if (currentRequest.endsWith(this.name)) {
+        return true;
+      }
+    }
+
     return false;
   }
 }

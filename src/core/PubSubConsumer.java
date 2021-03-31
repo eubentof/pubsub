@@ -36,6 +36,8 @@ public class PubSubConsumer<S extends Socket> extends GenericConsumer<S> {
 			if (!msg.getType().equals("notify"))
 				msg.setLogId(uniqueLogId);
 
+			log.add(msg);
+
 			Message response = commands.get(msg.getType()).execute(msg, log, subscribers);
 
 			if (!msg.getType().equals("notify"))
