@@ -3,6 +3,7 @@ package appl;
 import java.io.File;
 import java.io.FileReader;
 import java.lang.reflect.Array;
+import java.net.Socket;
 import java.util.concurrent.TimeUnit;
 
 import org.json.simple.JSONArray;
@@ -68,39 +69,49 @@ public class ApplClient {
     Integer numberOfTries = 0;
     Integer iterationLimit = 100;
 
+    String brokerAddress = (String) this.currBroker.get("ip");
+    Long brokerPort = (Long) this.currBroker.get("port");
+
     do {
       try {
-        if (!isRequesting) {
-          this.makeRequest("Aquire  : var X");
-          isRequesting = true;
-        }
-
-        hasAccess = checkIfHasAccess();
-
-        if (hasAccess) {
-          Random rand = new Random();
-          Integer secs = rand.nextInt(maxSleepTime.intValue());
-
-          this.makeRequest("Using   : var X");
-
-          System.out.println(this.name + " is using");
-
-          TimeUnit.SECONDS.sleep(secs); // Simulando a utilização do recurso
-          this.makeRequest("Release : var X");
-
-          isRequesting = false;
-          numberOfTries++;
-        }
-
-        // Espera 2 segundos antes de verificar novamente se tem acesso
-        System.out.println(this.name + " is awaiting");
-        TimeUnit.SECONDS.sleep(2);
-        iterationLimit--;
+        // Check if is alive
+        Socket s = new Socket(brokerAddress, brokerPort.intValue());
+        s.close();
+        System.out.println("it's alive!");
       } catch (Exception e) {
+        this.currBroker.put("lostConnection", true);
         isConnected = this.connectToBroker();
+        System.out.println("isConnected: " + isConnected);
         if (!isConnected)
-          return;
+          break;
       }
+
+      if (!isRequesting) {
+        this.makeRequest("Aquire  : var X");
+        isRequesting = true;
+      }
+
+      hasAccess = checkIfHasAccess();
+
+      if (hasAccess) {
+        Random rand = new Random();
+        Integer secs = rand.nextInt(maxSleepTime.intValue());
+
+        this.makeRequest("Using   : var X");
+
+        System.out.println(this.name + " is using");
+
+        TimeUnit.SECONDS.sleep(secs); // Simulando a utilização do recurso
+        this.makeRequest("Release : var X");
+
+        isRequesting = false;
+        numberOfTries++;
+      }
+
+      // Espera 2 segundos antes de verificar novamente se tem acesso
+      System.out.println(this.name + " is awaiting");
+      TimeUnit.SECONDS.sleep(2);
+      iterationLimit--;
 
     } while (iterationLimit > 0 && numberOfTries <= numberOfRequests);
 
@@ -108,8 +119,6 @@ public class ApplClient {
 
     printLog();
 
-    String brokerAddress = (String) this.currBroker.get("ip");
-    Long brokerPort = (Long) this.currBroker.get("port");
     this.client.unsubscribe(brokerAddress, brokerPort.intValue());
     this.client.stopPubSubClient();
   }
@@ -169,16 +178,21 @@ public class ApplClient {
         String brokerAddress = (String) this.currBroker.get("ip");
         Long brokerPort = (Long) this.currBroker.get("port");
 
-        System.out.println("Subscribing to " + this.currBroker.get("name") + " at " + brokerAddress + ":" + brokerPort);
         try {
+          Socket s = new Socket(brokerAddress, brokerPort.intValue());
+          s.close();
+          System.out
+              .println("Subscribing to " + this.currBroker.get("name") + " at " + brokerAddress + ":" + brokerPort);
+
           this.client.subscribe(brokerAddress, brokerPort.intValue());
+          
           System.out.println("Connected to " + this.currBroker.get("name"));
+          
           return true;
         } catch (Exception e) {
           this.currBroker.put("lostConnection", true);
           System.out.println("Lost connection to " + this.currBroker.get("name") + ", connecting to backup");
         }
-
       }
     }
     return false;
