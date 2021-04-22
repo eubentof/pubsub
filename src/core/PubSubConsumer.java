@@ -16,13 +16,19 @@ public class PubSubConsumer<S extends Socket> extends GenericConsumer<S> {
 	private int uniqueLogId;
 	private SortedSet<Message> log;
 	private Set<String> subscribers;
+	private boolean isPrimary;
+	private String secondaryServer;
+	private int secondaryPort;
 
-	public PubSubConsumer(GenericResource<S> re) {
+	public PubSubConsumer(GenericResource<S> re, boolean isPrimary, String secondaryServer, int secondaryPort) {
 		super(re);
 		uniqueLogId = 1;
 		log = new TreeSet<Message>(new MessageComparator());
 		subscribers = new TreeSet<String>();
 
+		this.isPrimary = isPrimary;
+		this.secondaryServer = secondaryServer;
+		this.secondaryPort = secondaryPort;
 	}
 
 	@Override
@@ -33,17 +39,31 @@ public class PubSubConsumer<S extends Socket> extends GenericConsumer<S> {
 
 			Message msg = (Message) in.readObject();
 
-			if (!msg.getType().equals("notify"))
-				msg.setLogId(uniqueLogId);
+			Message response = null;
 
-			log.add(msg);
+			String type = msg.getType();
+			
+			if (type.equalsIgnoreCase("sub")) this.isPrimary = true;
 
-			Message response = commands.get(msg.getType()).execute(msg, log, subscribers);
+			if (!isPrimary && !msg.getType().startsWith("sync")) {
 
-			if (!msg.getType().equals("notify"))
-				uniqueLogId = msg.getLogId();
+				// Client client = new Client(secondaryServer, secondaryPort);
+				// response = client.sendReceive(msg);
 
-			System.out.print("Message Received: " + msg.getContent() + "\n");
+				response = new MessageImpl();
+				response.setType("backup");
+				response.setContent(secondaryServer + ":" + secondaryPort);
+
+			} else {
+				if (!msg.getType().equals("notify") && !msg.getType().startsWith("sync"))
+					msg.setLogId(uniqueLogId);
+
+				response = commands.get(msg.getType()).execute(msg, log, subscribers, isPrimary, secondaryServer,
+						secondaryPort);
+
+				if (!msg.getType().equals("notify") && !msg.getType().startsWith("sync"))
+					uniqueLogId = msg.getLogId();
+			}
 
 			ObjectOutputStream out = new ObjectOutputStream(str.getOutputStream());
 			out.writeObject(response);
@@ -70,4 +90,5 @@ public class PubSubConsumer<S extends Socket> extends GenericConsumer<S> {
 
 		return logCopy;
 	}
+
 }

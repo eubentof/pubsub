@@ -1,60 +1,58 @@
 package core;
 
-
 import java.util.LinkedList;
 
 public class GenericResource<S> {
 	private LinkedList<S> registers;
 	protected boolean finished, serverFinished;
-		
-	public GenericResource(){
+
+	public GenericResource() {
 		this.registers = new LinkedList<S>();
-		this.finished = false;		
+		this.finished = false;
 	}
-		
-	public synchronized void putRegister(S register){
+
+	public synchronized void putRegister(S register) {
+
 		this.registers.addLast(register);
 		wakeup();
 	}
-	
-	protected void wakeup(){
+
+	protected void wakeup() {
 		this.notify();
 	}
-							
-	public synchronized S getRegister() throws Exception{
-		if(!this.registers.isEmpty()){
+
+	public synchronized S getRegister() throws Exception {
+		if (!this.registers.isEmpty())
 			return this.registers.removeFirst();
-		}
 		else {
-			if(finished==false)
+			if (finished == false)
 				suspend();
-			return null;		
+			return null;
 		}
 	}
-	
-	protected synchronized void suspend()throws Exception{
+
+	protected synchronized void suspend() throws Exception {
 		wait();
 	}
-	
-	public int getNumOfRegisters(){
+
+	public int getNumOfRegisters() {
 		return this.registers.size();
 	}
-	
-	public synchronized void setFinished(){
+
+	public synchronized void setFinished() {
 		this.finished = true;
 		this.notifyAll();
 	}
-	
-	public boolean isFinished(){
+
+	public boolean isFinished() {
 		return this.finished;
 	}
-	
-		
-	public boolean isStopped(){
+
+	public boolean isStopped() {
 		return serverFinished;
 	}
-	
-	public synchronized void stopServer(){
+
+	public synchronized void stopServer() {
 		serverFinished = true;
 		this.notifyAll();
 	}
