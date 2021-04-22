@@ -3,10 +3,16 @@
     "ip": "localhost",
     "port": 8083,
     "numberOfRequests": 5,
-    "maxSleepTime": 6,
+    "maxSleepTime": 8,
     "brokers": [{
+        "name": "Broker 1",
+        "ip": "localhost",
+        "port": 8080,
+        "lostConnection": false
+    },{
         "name": "Broker 2",
         "ip": "localhost",
-        "port": 8081
+        "port": 8081,
+        "lostConnection": false
     }]
 }
