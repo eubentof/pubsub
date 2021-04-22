@@ -67,19 +67,22 @@ public class ApplClient {
     Boolean hasAccess = false;
 
     Integer numberOfTries = 0;
-    Integer iterationLimit = 100;
+    Integer iterationLimit = 40;
 
-    String brokerAddress = (String) this.currBroker.get("ip");
-    Long brokerPort = (Long) this.currBroker.get("port");
+    
+    String brokerAddress;
+    Long brokerPort;
 
     do {
+      brokerAddress = (String) this.currBroker.get("ip");
+      brokerPort = (Long) this.currBroker.get("port");
+
       try {
         // Check if is alive
         Socket s = new Socket(brokerAddress, brokerPort.intValue());
         s.close();
-        System.out.println("it's alive!");
       } catch (Exception e) {
-        this.currBroker.put("lostConnection", true);
+        // this.currBroker.put("lostConnection", true);
         isConnected = this.connectToBroker();
         System.out.println("isConnected: " + isConnected);
         if (!isConnected)
@@ -169,33 +172,38 @@ public class ApplClient {
   }
 
   public boolean connectToBroker() {
+    Integer nBrokersLeft = this.brokers.size();
     for (int i = 0; i < this.brokers.size(); i++) {
-      this.currBroker = (JSONObject) this.brokers.get(i);
+      JSONObject broker = (JSONObject) this.brokers.get(i);
 
-      Boolean lostConnection = (Boolean) this.currBroker.get("lostConnection");
+      Boolean lostConnection = (Boolean) broker.get("lostConnection");
+
+      String brokerAddress = (String) broker.get("ip");
+      Long brokerPort = (Long) broker.get("port");
 
       if (!lostConnection) {
-        String brokerAddress = (String) this.currBroker.get("ip");
-        Long brokerPort = (Long) this.currBroker.get("port");
-
         try {
+          // Checa se esta vivo
           Socket s = new Socket(brokerAddress, brokerPort.intValue());
           s.close();
-          System.out
-              .println("Subscribing to " + this.currBroker.get("name") + " at " + brokerAddress + ":" + brokerPort);
 
+          System.out.println("Subscribing to " + broker.get("name") + " at " + brokerAddress + ":" + brokerPort);
           this.client.subscribe(brokerAddress, brokerPort.intValue());
-          
-          System.out.println("Connected to " + this.currBroker.get("name"));
-          
+
+          System.out.println("Connected to " + broker.get("name"));
+
+          this.currBroker = broker;
           return true;
         } catch (Exception e) {
-          this.currBroker.put("lostConnection", true);
-          System.out.println("Lost connection to " + this.currBroker.get("name") + ", connecting to backup");
+          broker.put("lostConnection", true);
+          System.out.println("Lost connection to " + broker.get("name") + ", connecting to backup");
         }
+      } else {
+        nBrokersLeft--;
+        this.client.unsubscribe(brokerAddress, brokerPort.intValue());
       }
     }
-    return false;
+    return nBrokersLeft > 0;
   }
 
   public static JSONObject loadJSON(String file) throws Exception {

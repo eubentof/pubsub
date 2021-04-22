@@ -2,7 +2,7 @@
     "name": "Client A",
     "ip": "localhost",
     "port": 8084,
-    "numberOfRequests": 5,
+    "numberOfRequests": 8,
     "maxSleepTime": 7,
     "brokers": [{
         "name": "Broker 1",
