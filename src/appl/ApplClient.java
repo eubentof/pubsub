@@ -64,42 +64,43 @@ public class ApplClient {
 
     Boolean isRequesting = false;
     Boolean hasAccess = false;
-    Boolean requestSuccess;
 
     Integer numberOfTries = 0;
     Integer iterationLimit = 100;
 
     do {
+      try {
+        if (!isRequesting) {
+          this.makeRequest("Aquire  : var X");
+          isRequesting = true;
+        }
 
-      if (!isRequesting) {
-        requestSuccess = this.makeRequest("Aquire  : var X");
-        if (!requestSuccess) break;
-        isRequesting = true;
+        hasAccess = checkIfHasAccess();
+
+        if (hasAccess) {
+          Random rand = new Random();
+          Integer secs = rand.nextInt(maxSleepTime.intValue());
+
+          this.makeRequest("Using   : var X");
+
+          System.out.println(this.name + " is using");
+
+          TimeUnit.SECONDS.sleep(secs); // Simulando a utilização do recurso
+          this.makeRequest("Release : var X");
+
+          isRequesting = false;
+          numberOfTries++;
+        }
+
+        // Espera 2 segundos antes de verificar novamente se tem acesso
+        System.out.println(this.name + " is awaiting");
+        TimeUnit.SECONDS.sleep(2);
+        iterationLimit--;
+      } catch (Exception e) {
+        isConnected = this.connectToBroker();
+        if (!isConnected)
+          return;
       }
-
-      hasAccess = checkIfHasAccess();
-
-      if (hasAccess) {
-        Random rand = new Random();
-        Integer secs = rand.nextInt(maxSleepTime.intValue());
-
-        requestSuccess = this.makeRequest("Using   : var X");
-        if (!requestSuccess) break;
-
-        System.out.println(this.name + " is using");
-
-        TimeUnit.SECONDS.sleep(secs); // Simulando a utilização do recurso
-        requestSuccess = this.makeRequest("Release : var X");
-        if (!requestSuccess) break;
-
-        isRequesting = false;
-        numberOfTries++;
-      }
-
-      // Espera 2 segundos antes de verificar novamente se tem acesso
-      System.out.println(this.name + " is awaiting");
-      TimeUnit.SECONDS.sleep(2);
-      iterationLimit--;
 
     } while (iterationLimit > 0 && numberOfTries <= numberOfRequests);
 
@@ -107,8 +108,9 @@ public class ApplClient {
 
     printLog();
 
-    // TODO: Colocar aqui com o broker salvo
-    this.client.unsubscribe("localhost", 8080);
+    String brokerAddress = (String) this.currBroker.get("ip");
+    Long brokerPort = (Long) this.currBroker.get("port");
+    this.client.unsubscribe(brokerAddress, brokerPort.intValue());
     this.client.stopPubSubClient();
   }
 
@@ -143,7 +145,7 @@ public class ApplClient {
     }
   }
 
-  public boolean makeRequest(String messageContent) {
+  public void makeRequest(String messageContent) {
     String brokerAddress = (String) this.currBroker.get("ip");
     Long brokerPort = (Long) this.currBroker.get("port");
     Thread request = new ThreadWrapper(this.client,
@@ -152,21 +154,12 @@ public class ApplClient {
       request.start();
       request.join();
       request.interrupt();
-      return true;
     } catch (Exception e) {
       System.out.println(e);
-      Boolean isConnected = this.connectToBroker();
-      if (isConnected) {
-        this.makeRequest(messageContent);
-        return true;
-      } else {
-        return false;
-      }
     }
   }
 
   public boolean connectToBroker() {
-    Boolean isConnected = false;
     for (int i = 0; i < this.brokers.size(); i++) {
       this.currBroker = (JSONObject) this.brokers.get(i);
 
@@ -179,17 +172,16 @@ public class ApplClient {
         System.out.println("Subscribing to " + this.currBroker.get("name") + " at " + brokerAddress + ":" + brokerPort);
         try {
           this.client.subscribe(brokerAddress, brokerPort.intValue());
-          isConnected = true;
-          break;
+          System.out.println("Connected to " + this.currBroker.get("name"));
+          return true;
         } catch (Exception e) {
           this.currBroker.put("lostConnection", true);
-          System.out.println("Lost connection to " + this.currBroker.get("name"));
-          isConnected = false;
+          System.out.println("Lost connection to " + this.currBroker.get("name") + ", connecting to backup");
         }
 
       }
     }
-    return isConnected;
+    return false;
   }
 
   public static JSONObject loadJSON(String file) throws Exception {
@@ -224,7 +216,7 @@ public class ApplClient {
 
       // Verifica se o release é do primeiro aquire
       if (request.startsWith("Release")) {
-        
+
         String[] splitedRequest = request.split("-");
         String requestId = splitedRequest[1].trim(); // "Client A - Broker 1"
         String firstRequest = openRequests.get(0);
@@ -235,7 +227,8 @@ public class ApplClient {
       }
     }
 
-    // Se houver requests em aberto e o primeiro aquire for do cliente, o cliente pode acessar
+    // Se houver requests em aberto e o primeiro aquire for do cliente, o cliente
+    // pode acessar
     if (openRequests.size() > 0) {
       String currentRequest = openRequests.get(0);
       if (currentRequest.endsWith(clientId)) {
