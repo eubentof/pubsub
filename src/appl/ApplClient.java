@@ -29,8 +29,8 @@ public class ApplClient {
   }
 
   public ApplClient() throws Exception {
-    String fileNameConfig = "clientA.config.json";
-    // String fileNameConfig = "clientB.config.json";
+    // String fileNameConfig = "clientA.config.json";
+    String fileNameConfig = "clientB.config.json";
     // String fileNameConfig = "clientC.config.json";
     File file = new File("src/appl/" + fileNameConfig);
 
@@ -132,7 +132,7 @@ public class ApplClient {
     String brokerAddress = (String) this.client.currBroker.get("ip");
     Long brokerPort = (Long) this.client.currBroker.get("port");
     Thread request = new ThreadWrapper(this.client,
-        messageContent + " - " + this.name + " | " + this.client.currBroker.get("name"), brokerAddress,
+        messageContent + " - " + this.name, brokerAddress,
         brokerPort.intValue());
     try {
       request.start();
@@ -160,9 +160,9 @@ public class ApplClient {
 
     List<String> openRequests = new ArrayList<String>();
 
-    String currBrokerName = (String) this.client.currBroker.get("name");
+    // String currBrokerName = (String) this.client.currBroker.get("name");
 
-    String clientId = this.name + " | " + currBrokerName;
+    String clientId = this.name;
 
     while (it.hasNext()) {
       Message message = it.next();
@@ -177,7 +177,7 @@ public class ApplClient {
       if (request.startsWith("Release")) {
 
         String[] splitedRequest = request.split("-");
-        String requestId = splitedRequest[1].trim(); // "Client A - Broker 1"
+        String requestId = splitedRequest[1].trim(); // "Client A"
         String firstRequest = openRequests.get(0);
 
         if (firstRequest.endsWith(requestId)) {
