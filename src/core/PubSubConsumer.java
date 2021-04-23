@@ -43,7 +43,11 @@ public class PubSubConsumer<S extends Socket> extends GenericConsumer<S> {
 
 			String type = msg.getType();
 			
-			if (type.equalsIgnoreCase("sub")) this.isPrimary = true;
+			if (type.equalsIgnoreCase("sub") && !this.isPrimary) {
+				this.isPrimary = true;
+				Message lastMessage =  this.log.last();
+				if (lastMessage != null) uniqueLogId = lastMessage.getLogId();
+			}
 
 			if (!isPrimary && !msg.getType().startsWith("sync")) {
 

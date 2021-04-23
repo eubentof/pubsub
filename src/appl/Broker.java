@@ -21,7 +21,7 @@ public class Broker {
 		System.out.print("Enter the Broker port number: ");
 		int port = reader.nextInt(); // Scans the next token of the input as an int.
 		
-		System.out.print("Is the broker primary?: Y/N");
+		System.out.print("Is the broker primary? (Y/N): ");
 		String respYN = reader.next();
 		
 		System.out.print("Enter the secondary Broker address: ");
