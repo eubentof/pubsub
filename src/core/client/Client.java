@@ -2,9 +2,11 @@ package core.client;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.net.UnknownHostException;
 
 import core.Message;
 
@@ -12,12 +14,8 @@ public class Client {
 
 	private Socket s;
 
-	public Client(String ip, int port) {
-		try {
-			s = new Socket(ip, port);
-		} catch (Exception e) {
-			System.out.println("Client cannot connect with " + ip + " on port: " + port);
-		}
+	public Client(String ip, int port) throws UnknownHostException, IOException {
+		s = new Socket(ip, port);
 	}
 
 	public Message sendReceive(Message msg) {
@@ -34,6 +32,11 @@ public class Client {
 			s.close();
 			return response;
 		} catch (Exception e) {
+			// try {
+			// s.close();
+			// } catch (Exception _e) {
+			// _e.printStackTrace();
+			// }
 			return null;
 		}
 	}

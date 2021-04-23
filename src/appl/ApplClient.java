@@ -2,8 +2,6 @@ package appl;
 
 import java.io.File;
 import java.io.FileReader;
-import java.lang.reflect.Array;
-import java.net.Socket;
 import java.util.concurrent.TimeUnit;
 
 import org.json.simple.JSONArray;
@@ -25,18 +23,14 @@ public class ApplClient {
   String ip;
   Long port;
 
-  JSONObject currBroker;
-
-  JSONArray brokers;
-
   public static void main(String[] args) throws Exception {
     // TODO Auto-generated method stub
     new ApplClient();
   }
 
   public ApplClient() throws Exception {
-    // String fileNameConfig = "clientA.config.json";
-    String fileNameConfig = "clientB.config.json";
+    String fileNameConfig = "clientA.config.json";
+    // String fileNameConfig = "clientB.config.json";
     // String fileNameConfig = "clientC.config.json";
     File file = new File("src/appl/" + fileNameConfig);
 
@@ -49,19 +43,13 @@ public class ApplClient {
     Long numberOfRequests = (Long) jsonObject.get("numberOfRequests");
     Long maxSleepTime = (Long) jsonObject.get("maxSleepTime");
 
-    this.brokers = (JSONArray) jsonObject.get("brokers");
+    JSONArray brokers = (JSONArray) jsonObject.get("brokers");
 
     System.out.println("Starting client " + this.name + " at " + this.ip + ":" + this.port);
 
-    this.client = new PubSubClient(this.ip, this.port.intValue());
+    this.client = new PubSubClient(this.ip, this.port.intValue(), brokers);
 
-    Boolean isConnected = this.connectToBroker();
-
-    if (!isConnected) {
-      System.out.println("Stoping " + this.name);
-      this.client.stopPubSubClient();
-      return;
-    }
+    this.client.init();
 
     Boolean isRequesting = false;
     Boolean hasAccess = false;
@@ -69,25 +57,7 @@ public class ApplClient {
     Integer numberOfTries = 0;
     Integer iterationLimit = 40;
 
-    
-    String brokerAddress;
-    Long brokerPort;
-
     do {
-      brokerAddress = (String) this.currBroker.get("ip");
-      brokerPort = (Long) this.currBroker.get("port");
-
-      try {
-        // Check if is alive
-        Socket s = new Socket(brokerAddress, brokerPort.intValue());
-        s.close();
-      } catch (Exception e) {
-        // this.currBroker.put("lostConnection", true);
-        isConnected = this.connectToBroker();
-        System.out.println("isConnected: " + isConnected);
-        if (!isConnected)
-          break;
-      }
 
       if (!isRequesting) {
         this.makeRequest("Aquire  : var X");
@@ -121,7 +91,8 @@ public class ApplClient {
     System.out.println("Stoping " + this.name);
 
     printLog();
-
+    String brokerAddress = (String) this.client.currBroker.get("ip");
+    Long brokerPort = (Long) this.client.currBroker.get("port");
     this.client.unsubscribe(brokerAddress, brokerPort.intValue());
     this.client.stopPubSubClient();
   }
@@ -158,10 +129,11 @@ public class ApplClient {
   }
 
   public void makeRequest(String messageContent) {
-    String brokerAddress = (String) this.currBroker.get("ip");
-    Long brokerPort = (Long) this.currBroker.get("port");
+    String brokerAddress = (String) this.client.currBroker.get("ip");
+    Long brokerPort = (Long) this.client.currBroker.get("port");
     Thread request = new ThreadWrapper(this.client,
-        messageContent + " - " + this.name + " | " + this.currBroker.get("name"), brokerAddress, brokerPort.intValue());
+        messageContent + " - " + this.name + " | " + this.client.currBroker.get("name"), brokerAddress,
+        brokerPort.intValue());
     try {
       request.start();
       request.join();
@@ -169,41 +141,6 @@ public class ApplClient {
     } catch (Exception e) {
       System.out.println(e);
     }
-  }
-
-  public boolean connectToBroker() {
-    Integer nBrokersLeft = this.brokers.size();
-    for (int i = 0; i < this.brokers.size(); i++) {
-      JSONObject broker = (JSONObject) this.brokers.get(i);
-
-      Boolean lostConnection = (Boolean) broker.get("lostConnection");
-
-      String brokerAddress = (String) broker.get("ip");
-      Long brokerPort = (Long) broker.get("port");
-
-      if (!lostConnection) {
-        try {
-          // Checa se esta vivo
-          Socket s = new Socket(brokerAddress, brokerPort.intValue());
-          s.close();
-
-          System.out.println("Subscribing to " + broker.get("name") + " at " + brokerAddress + ":" + brokerPort);
-          this.client.subscribe(brokerAddress, brokerPort.intValue());
-
-          System.out.println("Connected to " + broker.get("name"));
-
-          this.currBroker = broker;
-          return true;
-        } catch (Exception e) {
-          broker.put("lostConnection", true);
-          System.out.println("Lost connection to " + broker.get("name") + ", connecting to backup");
-        }
-      } else {
-        nBrokersLeft--;
-        this.client.unsubscribe(brokerAddress, brokerPort.intValue());
-      }
-    }
-    return nBrokersLeft > 0;
   }
 
   public static JSONObject loadJSON(String file) throws Exception {
@@ -223,7 +160,7 @@ public class ApplClient {
 
     List<String> openRequests = new ArrayList<String>();
 
-    String currBrokerName = (String) this.currBroker.get("name");
+    String currBrokerName = (String) this.client.currBroker.get("name");
 
     String clientId = this.name + " | " + currBrokerName;
 

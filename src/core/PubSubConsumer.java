@@ -84,6 +84,7 @@ public class PubSubConsumer<S extends Socket> extends GenericConsumer<S> {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
+			e.printStackTrace();
 		}
 
 	}

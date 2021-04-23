@@ -53,17 +53,21 @@ public class SubCommand implements PubSubCommand {
 				Iterator<Message> it = log.iterator();
 				String[] ipAndPort = m.getContent().split(":");
 				while (it.hasNext()) {
-					Client client = new Client(ipAndPort[0], Integer.parseInt(ipAndPort[1]));
-					Message msg = it.next();
-					Message aux = new MessageImpl();
-					aux.setType("notify");
-					aux.setContent(msg.getContent());
-					aux.setLogId(msg.getLogId());
-					aux.setBrokerId(m.getBrokerId());
-					Message cMsg = client.sendReceive(aux);
-					if (cMsg == null) {
-						subscribers.remove(m.getContent());
-						break;
+					try {
+						Client client = new Client(ipAndPort[0], Integer.parseInt(ipAndPort[1]));
+						Message msg = it.next();
+						Message aux = new MessageImpl();
+						aux.setType("notify");
+						aux.setContent(msg.getContent());
+						aux.setLogId(msg.getLogId());
+						aux.setBrokerId(m.getBrokerId());
+						Message cMsg = client.sendReceive(aux);
+						if (cMsg == null) {
+							subscribers.remove(m.getContent());
+							break;
+						}
+					} catch (Exception e) {
+						//TODO: handle exception
 					}
 				}
 			}
